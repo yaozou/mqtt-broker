@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+  <property name="LOG_FILE" value="logs/broker.log"/>
+  <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+  <include resource="org/springframework/boot/logging/logback/file-appender.xml" />
+  <root level="INFO">
+    <appender-ref ref="CONSOLE" />
+    <appender-ref ref="FILE" />
+  </root>
+
+  <!-- 开发、测试环境 -->
+  <springProfile name="dev,test">
+    <logger name="org.apache.kafka" level="WARN"/>
+    <logger name="com.yao.broker" level="DEBUG" />
+  </springProfile>
+
+  <!-- 生产环境 -->
+  <springProfile name="prod">
+    <logger name="org.apache.kafka" level="WARN"/>
+    <logger name="com.yao.broker" level="INFO" />
+  </springProfile>
+
+</configuration>
