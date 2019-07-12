@@ -8,9 +8,19 @@
     <artifactId>broker-core</artifactId>
     <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
+    <parent>
+        <groupId>com,yao.broker</groupId>
+        <artifactId>broker-starter</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
     <modules>
         <module>../broker-starter</module>
     </modules>
-
+    <dependencies>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+        </dependency>
+    </dependencies>
 
 </project>
