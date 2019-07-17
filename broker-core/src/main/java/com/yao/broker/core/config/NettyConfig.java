@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
+import io.netty.handler.ssl.SslProvider;
 import lombok.Data;
 
 /**
@@ -29,4 +30,9 @@ public class NettyConfig {
     private boolean tcpNodelay = true;
     private boolean soKeepalive = true;
 
+    private String sslProvider = SslProvider.JDK.name();
+    private String jksPath = new String();
+    private boolean needsClientAuth = false;
+    private String keyManagerPassword = new String();
+    private String keyStorePassword = new String();
 }
