@@ -66,6 +66,9 @@ public class NettyMqttHandler extends ChannelInboundHandlerAdapter {
             case PUBREL:
                 processor.processPubRel(ctx.channel(),message);
                 break;
+            case PUBCOMP:
+                processor.processPubComp(ctx.channel(), message);
+                break;
             case DISCONNECT:
                 processor.processDisconnect(ctx.channel());
                 break;

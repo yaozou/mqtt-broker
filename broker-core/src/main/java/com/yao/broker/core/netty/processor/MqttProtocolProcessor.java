@@ -14,7 +14,9 @@ import com.yao.broker.core.utils.NettyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -29,11 +31,16 @@ import io.netty.handler.codec.mqtt.MqttConnectPayload;
 import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
 import io.netty.handler.codec.mqtt.MqttMessage;
+import io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPubAckMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import io.netty.handler.codec.mqtt.MqttSubAckMessage;
+import io.netty.handler.codec.mqtt.MqttSubAckPayload;
 import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
+import io.netty.handler.codec.mqtt.MqttTopicSubscription;
+import io.netty.handler.codec.mqtt.MqttUnsubAckMessage;
 import io.netty.handler.codec.mqtt.MqttUnsubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttVersion;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -44,6 +51,8 @@ import static io.netty.channel.ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE;
 import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.CONNECTION_ACCEPTED;
 import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED;
 import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION;
+import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
+import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
 /**
  * @Description:
@@ -76,7 +85,7 @@ public class MqttProtocolProcessor {
         //客户端标识
         String clientId = payload.clientIdentifier();
         //用户名
-        String name = payload.userName();
+        final String name = payload.userName();
 
         log.debug("processing connect message.ClientId={},Username={}",clientId,name);
 
@@ -155,9 +164,92 @@ public class MqttProtocolProcessor {
                 }
             }
         });
+    }
 
+    public void processSubscribe(Channel channel, MqttSubscribeMessage msg){
+        final String clientId = NettyUtils.clientID(channel);
+        final String username = NettyUtils.userName(channel);
+        final int msgId = messageId(msg);
+        log.debug("processing subscribe message.ClientId={},messageId={}",clientId,msgId);
+        // todo:防止并发
+
+        List<MqttTopicSubscription> subscriptions = msg.payload().topicSubscriptions();
+        // 1、发送订阅确认消息
+        MqttSubAckMessage ackMessage = createSubAskMessage(subscriptions,msgId);
+        log.debug("send SubAck message.ClientId={},messageId={}",clientId,msgId);
+        channel.writeAndFlush(ackMessage).addListener(FIRE_EXCEPTION_ON_FAILURE);
+        // 2、持久化已订阅的消息
+        for(MqttTopicSubscription sub : subscriptions){
+            Subscription subscription = new Subscription(clientId,new Topic(sub.topicName()),sub.qualityOfService());
+            subscriptionRepository.add(subscription);
+        }
+    }
+
+    public void processUnsubscribe(Channel channel, MqttUnsubscribeMessage msg){
+        final String clientId = NettyUtils.clientID(channel);
+        List<String> topics = msg.payload().topics();
+        log.debug("processing Unsubscribe message.ClientId={},topics={}",clientId,topics);
+
+        // 1、清理订阅消息缓存
+        for(String s : topics){
+            Topic topic = new Topic(s);
+            subscriptionRepository.remove(topic,clientId);
+        }
+
+        // 2、取消订阅应答
+        MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.UNSUBACK, false, AT_MOST_ONCE,
+                false, 0);
+        int msgId = msg.variableHeader().messageId();
+        MqttUnsubAckMessage ackMessage = new MqttUnsubAckMessage(fixedHeader, from(msgId));
+        log.debug("send UnsubAck message.ClientId={},messageId={}",clientId,msgId);
+        channel.writeAndFlush(ackMessage).addListener(FIRE_EXCEPTION_ON_FAILURE);
+    }
+
+    public void processPublish(Channel channel, MqttPublishMessage msg){
+        final MqttQoS qos = msg.fixedHeader().qosLevel();
+        final String clientId = NettyUtils.clientID(channel);
+        log.debug("processing Publish message.ClientId={},qos={},messageId={}",clientId,qos,messageId(msg));
+        switch (qos){
+            case AT_MOST_ONCE:
+
+                break;
+            case AT_LEAST_ONCE:
+
+                break;
+            case EXACTLY_ONCE:
+
+                break;
+                default:
+                    log.error("Unknown QoS-Type:{}", qos);
+                    break;
+        }
+    }
+
+    public void processPubAck(Channel channel, MqttPubAckMessage msg){
 
     }
+
+    public void processPubRec(Channel channel, MqttMessage msg){
+
+    }
+
+    public void processPubRel(Channel channel, MqttMessage msg){
+
+    }
+
+    public void processPubComp(Channel channel, MqttMessage msg) {
+
+    }
+
+    public void processDisconnect(Channel channel){
+
+    }
+
+    private boolean isProtocolVersion(MqttConnectMessage message , MqttVersion version){
+        return version.protocolLevel() == message.variableHeader().version();
+    }
+
+
     private void reauthorizeOnExistingSubscriptions(String clientId, String username) {
         if (!sessionRepository.containsKey(clientId)) {
             return;
@@ -223,40 +315,22 @@ public class MqttProtocolProcessor {
         return new MqttConnAckMessage(mqttFixedHeader, mqttConnAckVariableHeader);
     }
 
-    public void processSubscribe(Channel channel, MqttSubscribeMessage msg){
-
+    public static int messageId(MqttMessage mqttMessage){
+        return ((MqttMessageIdVariableHeader) mqttMessage.variableHeader()).messageId();
     }
 
-    public void processUnsubscribe(Channel channel, MqttUnsubscribeMessage msg){
+    private MqttSubAckMessage createSubAskMessage(List<MqttTopicSubscription> subscriptions, int messageId) {
+        List<Integer> qoSLevels = new ArrayList<>();
+        for(MqttTopicSubscription subscription : subscriptions){
+            qoSLevels.add(subscription.qualityOfService().value());
+        }
 
-    }
+        MqttFixedHeader fixedHeader = new MqttFixedHeader(
+                MqttMessageType.SUBACK, false, AT_MOST_ONCE,
+                false, 0);
+        MqttSubAckPayload payload = new MqttSubAckPayload(qoSLevels);
 
-    public void processPublish(Channel channel, MqttPublishMessage msg){
-
-    }
-
-    public void processPubAck(Channel channel, MqttPubAckMessage msg){
-
-    }
-
-    public void processPubRec(Channel channel, MqttMessage msg){
-
-    }
-
-    public void processPubRel(Channel channel, MqttMessage msg){
-
-    }
-
-    public void processPubComp(Channel channel, MqttMessage msg) {
-
-    }
-
-    public void processDisconnect(Channel channel){
-
-    }
-
-    private boolean isProtocolVersion(MqttConnectMessage message , MqttVersion version){
-        return version.protocolLevel() == message.variableHeader().version();
+        return new MqttSubAckMessage(fixedHeader,MqttMessageIdVariableHeader.from(messageId),payload);
     }
 
 }

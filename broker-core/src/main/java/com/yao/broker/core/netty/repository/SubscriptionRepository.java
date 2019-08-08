@@ -1,5 +1,6 @@
 package com.yao.broker.core.netty.repository;
 
+import com.yao.broker.core.netty.bean.Subscription;
 import com.yao.broker.core.netty.bean.Topic;
 
 import org.springframework.stereotype.Service;
@@ -15,4 +16,9 @@ public class SubscriptionRepository {
     public void remove(Topic topic , String client){
 
     }
+
+    public void add(Subscription newSubscription){
+
+    }
+
 }
