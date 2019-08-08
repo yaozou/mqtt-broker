@@ -64,6 +64,8 @@ public class BrokerNettyAcceptor implements BrokerAcceptor {
     private EventLoopGroup workerGroup;
 
     private Class<? extends ServerSocketChannel> channel;
+
+    @Autowired
     private NettyMqttHandler nettyMqttHandler;
 
     @Override
@@ -78,7 +80,6 @@ public class BrokerNettyAcceptor implements BrokerAcceptor {
             workerGroup = new NioEventLoopGroup();
             channel = NioServerSocketChannel.class;
         }
-        nettyMqttHandler = new NettyMqttHandler();
         boolean ssl = nettyConfig.isSsl();
         if (ssl){
             startSslTCPTransport();

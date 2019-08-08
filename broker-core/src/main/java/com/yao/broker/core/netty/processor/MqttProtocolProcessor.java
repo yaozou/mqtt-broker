@@ -1,8 +1,27 @@
 package com.yao.broker.core.netty.processor;
 
+import com.yao.broker.core.netty.authorizator.AuthorizatorServer;
+import com.yao.broker.core.netty.bean.ClientSession;
+import com.yao.broker.core.netty.bean.ConnectionInfo;
+import com.yao.broker.core.netty.bean.Subscription;
+import com.yao.broker.core.netty.bean.Topic;
+import com.yao.broker.core.netty.handler.AutoFlushHandler;
+import com.yao.broker.core.netty.repository.ConnectionRepository;
+import com.yao.broker.core.netty.repository.SessionRepository;
+import com.yao.broker.core.netty.repository.SubscriptionRepository;
+import com.yao.broker.core.utils.NettyUtils;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Collection;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.mqtt.MqttConnAckMessage;
 import io.netty.handler.codec.mqtt.MqttConnAckVariableHeader;
 import io.netty.handler.codec.mqtt.MqttConnectMessage;
@@ -17,10 +36,12 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.codec.mqtt.MqttSubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttUnsubscribeMessage;
 import io.netty.handler.codec.mqtt.MqttVersion;
+import io.netty.handler.timeout.IdleStateHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import static io.netty.channel.ChannelFutureListener.CLOSE_ON_FAILURE;
 import static io.netty.channel.ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE;
+import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.CONNECTION_ACCEPTED;
 import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED;
 import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION;
 
@@ -29,9 +50,18 @@ import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.CONNECTION_REFUS
  * @author: yaozou
  * @Date: 2019/8/7 15:24
  */
+@Service
 @Slf4j
 public class MqttProtocolProcessor {
 
+    @Autowired
+    private SessionRepository sessionRepository;
+    @Autowired
+    private ConnectionRepository connectionRepository;
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
+    @Autowired
+    private AuthorizatorServer authorizatorServer;
 
     /**
      * 客户端连接服务端
@@ -61,7 +91,7 @@ public class MqttProtocolProcessor {
             return;
         }
 
-        boolean cleanSession = msg.variableHeader().isCleanSession();
+       final boolean cleanSession = msg.variableHeader().isCleanSession();
         // 2、如果客户端提供了一个零字节的客户端标识符，它 必须同时将清理会话标志设置为 1。
         // 如果客户端提供的 ClientId 为零字节且清理会话标志为 0，服务端 必须发送返回码为 0x02（表示标识符不
         //合格）的 CONNACK 报文响应客户端的 CONNECT 报文，然后关闭网络连接
@@ -82,21 +112,100 @@ public class MqttProtocolProcessor {
         byte[] pwd = payload.passwordInBytes();
 
         // 4、储存更新连接信息
+        // 4.1、根据 MQTT-3.1.2-4(清理会话) MQTT-3.1.2-5（遗嘱标志） MQTT-3.1.2-6（遗嘱QoS） 判断是否新建链接
+        ConnectionInfo connectionInfo = new ConnectionInfo(clientId,channel,cleanSession);
+        connectionRepository.addConnection(connectionInfo);
 
         // 5、初始化session
+        ClientSession clientSession  = sessionRepository.get(clientId);
+        if (clientSession != null && cleanSession){
+            // 会话标志位为1时，删除所有的订阅关系
+            for(Subscription sub : clientSession.getSubscriptions()){
+                subscriptionRepository.remove(sub.getTopic(),sub.getClientId());
+            }
+        }
 
         // 6、初始化心跳时间
+        initKeepAliveTimeout(channel,msg,clientId);
 
         // 7、保存加载clientSession
+        sessionRepository.createOrLoadClientSession(clientId,cleanSession);
 
         // 8、定时刷新channel
+        // (keepAlive * 1000)/2
+        int flushIntervalMs = 500;
+        autoFlusher(channel,flushIntervalMs);
 
         // 9、清理session时重新鉴权订阅主题
+        if (!cleanSession){
+            reauthorizeOnExistingSubscriptions(clientId,name);
+        }
 
         // 10、连接应答
+        MqttConnAckMessage ackMessage = createSuccConnAsk(cleanSession,clientId);
+        String finalClientId = clientId;
+        connectionInfo.writeAndFlush(ackMessage, new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if (future.isSuccess()){
+                    log.debug("ConnAck has been sent.ClientId={}", finalClientId);
+
+                }else {
+                    future.channel().pipeline().fireExceptionCaught(future.cause());
+                }
+            }
+        });
 
 
+    }
+    private void reauthorizeOnExistingSubscriptions(String clientId, String username) {
+        if (!sessionRepository.containsKey(clientId)) {
+            return;
+        }
+        ClientSession session = sessionRepository.get(clientId);
+        final Collection<Subscription> clientSubscriptions = session.getSubscriptions();
+        for (Subscription sub : clientSubscriptions) {
+            final Topic topic = sub.getTopic();
+            // 鉴权
+            final boolean readAuthorized = authorizatorServer.canRead(topic, username, clientId);
+            if (!readAuthorized) {
+                // 移除订阅
+            }
+        }
+    }
 
+
+    private void autoFlusher(Channel channel,int flushIntervalMs) {
+        try {
+            channel.pipeline().addAfter("idleEventHandler","autoFlusher",new AutoFlushHandler(flushIntervalMs, TimeUnit.MILLISECONDS));
+        }catch (Exception e){
+            channel.pipeline().addFirst("autoFlusher",new AutoFlushHandler(flushIntervalMs, TimeUnit.MILLISECONDS));
+        }
+    }
+
+    private void initKeepAliveTimeout(Channel channel, MqttConnectMessage msg , String clientId) {
+        int keepAlive = msg.variableHeader().keepAliveTimeSeconds();
+
+        NettyUtils.keepAlive(channel, keepAlive);
+        NettyUtils.cleanSession(channel, msg.variableHeader().isCleanSession());
+        NettyUtils.clientID(channel, clientId);
+
+        int idleTime = Math.round(keepAlive*1.5f);
+        final String idleStateHandler = "idleStateHandler";
+        final ChannelPipeline pipeline = channel.pipeline();
+        if (pipeline.names().contains(idleStateHandler)){
+            pipeline.remove(idleStateHandler);
+        }
+        pipeline.addFirst(idleStateHandler,new IdleStateHandler(idleTime,0,0));
+    }
+
+    private MqttConnAckMessage createSuccConnAsk(final boolean cleanSession, String clientId){
+        boolean isSessionAlreadyStored  = sessionRepository.containsKey(clientId);
+        boolean sessionPresent = false;
+        if (!cleanSession && !isSessionAlreadyStored){
+            sessionPresent = true;
+        }
+        return createConnAck(CONNECTION_ACCEPTED,sessionPresent);
     }
 
     /**

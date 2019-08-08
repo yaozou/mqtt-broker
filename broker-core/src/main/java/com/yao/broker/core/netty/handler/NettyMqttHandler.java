@@ -4,6 +4,8 @@ import com.yao.broker.core.netty.processor.MqttProtocolProcessor;
 import com.yao.broker.core.utils.NettyUtils;
 
 import org.omg.CORBA.CODESET_INCOMPATIBLE;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 
@@ -28,13 +30,11 @@ import static io.netty.channel.ChannelFutureListener.CLOSE_ON_FAILURE;
  * @Date: 2019/7/16 15:05
  */
 @Slf4j
+@Service
 public class NettyMqttHandler extends ChannelInboundHandlerAdapter {
 
+    @Autowired
     MqttProtocolProcessor processor;
-    public NettyMqttHandler(){
-        processor = new MqttProtocolProcessor();
-    }
-
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
