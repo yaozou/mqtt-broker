@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * @Description:连接信息
@@ -20,5 +21,21 @@ public class ConnectionRepository {
 
     public void addConnection(ConnectionInfo info){
         cache.putIfAbsent(info.getClientId(),info);
+    }
+
+    public boolean isConnected(String client){
+        return cache.containsKey(client);
+    }
+
+    public Optional<ConnectionInfo> lookupDescriptor(String clientID) {
+        if (clientID == null) {
+            return Optional.empty();
+        }
+
+        ConnectionInfo descriptor = cache.get(clientID);
+        if (descriptor == null) {
+            return Optional.empty();
+        }
+        return Optional.of(descriptor);
     }
 }

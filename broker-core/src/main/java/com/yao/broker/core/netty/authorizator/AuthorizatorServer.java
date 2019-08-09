@@ -16,5 +16,8 @@ public class AuthorizatorServer {
         return true;
     }
 
+    public boolean canWrite(Topic topic, String user, String client) {
+        return true;
+    }
 
 }

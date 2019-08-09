@@ -22,4 +22,16 @@ public class ClientSession {
     public void cleanSession(){
 
     }
+
+    public int getMessage(StoreMessage message){
+        return 1;
+    }
+
+    public boolean isCleanSession() {
+        return false;
+    }
+
+    public void enqueue(StoreMessage message){
+
+    }
 }

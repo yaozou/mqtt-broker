@@ -5,6 +5,8 @@ import io.netty.channel.ChannelFutureListener;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+import static io.netty.channel.ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE;
+
 /**
  * @Description: 连接信息
  * @author: yaozou
@@ -25,5 +27,9 @@ public class ConnectionInfo {
 
     public void writeAndFlush(Object payload, ChannelFutureListener listener){
         this.channel.writeAndFlush(payload).addListener(listener);
+    }
+
+    public void writeAndFlush(Object payload){
+        this.channel.writeAndFlush(payload).addListener(FIRE_EXCEPTION_ON_FAILURE);
     }
 }

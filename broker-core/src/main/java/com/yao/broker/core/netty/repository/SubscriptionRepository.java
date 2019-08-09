@@ -5,6 +5,9 @@ import com.yao.broker.core.netty.bean.Topic;
 
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @Description:
  * @author: yaozou
@@ -19,6 +22,10 @@ public class SubscriptionRepository {
 
     public void add(Subscription newSubscription){
 
+    }
+
+    public List<Subscription> match(Topic topic){
+        return new ArrayList<>();
     }
 
 }

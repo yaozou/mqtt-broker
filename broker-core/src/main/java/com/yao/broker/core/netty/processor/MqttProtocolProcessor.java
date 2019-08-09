@@ -6,6 +6,8 @@ import com.yao.broker.core.netty.bean.ConnectionInfo;
 import com.yao.broker.core.netty.bean.Subscription;
 import com.yao.broker.core.netty.bean.Topic;
 import com.yao.broker.core.netty.handler.AutoFlushHandler;
+import com.yao.broker.core.netty.handler.QosPublishHandler;
+import com.yao.broker.core.netty.publisher.MessagesPublisher;
 import com.yao.broker.core.netty.repository.ConnectionRepository;
 import com.yao.broker.core.netty.repository.SessionRepository;
 import com.yao.broker.core.netty.repository.SubscriptionRepository;
@@ -71,6 +73,9 @@ public class MqttProtocolProcessor {
     private SubscriptionRepository subscriptionRepository;
     @Autowired
     private AuthorizatorServer authorizatorServer;
+
+    @Autowired
+    private QosPublishHandler qosPublishHandler;
 
     /**
      * 客户端连接服务端
@@ -211,7 +216,7 @@ public class MqttProtocolProcessor {
         log.debug("processing Publish message.ClientId={},qos={},messageId={}",clientId,qos,messageId(msg));
         switch (qos){
             case AT_MOST_ONCE:
-
+                qosPublishHandler.receivedPublishQos0(channel,msg);
                 break;
             case AT_LEAST_ONCE:
 
