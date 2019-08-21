@@ -3,6 +3,9 @@ package com.yao.broker.core.netty.handler;
 import com.yao.broker.core.netty.authorizator.AuthorizatorServer;
 import com.yao.broker.core.netty.bean.StoreMessage;
 import com.yao.broker.core.netty.bean.Topic;
+import com.yao.broker.core.netty.interception.BrokerInterceptor;
+import com.yao.broker.core.netty.interception.InterceptHandler;
+import com.yao.broker.core.netty.interception.PublisherListener;
 import com.yao.broker.core.netty.publisher.MessagesPublisher;
 import com.yao.broker.core.netty.repository.MessageRepository;
 import com.yao.broker.core.utils.NettyUtils;
@@ -14,6 +17,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * @Description: qos消息处理
@@ -30,6 +37,14 @@ public class QosPublishHandler {
     @Autowired
     private MessageRepository messageRepository;
 
+    private BrokerInterceptor m_interceptor;
+
+    public QosPublishHandler(){
+        List<InterceptHandler> userHandlers = Collections
+                .singletonList(new PublisherListener());
+        m_interceptor = new BrokerInterceptor(userHandlers,messageRepository);
+    }
+
     public void receivedPublishQos0(Channel channel, MqttPublishMessage msg){
         String topicName = msg.variableHeader().topicName();
         Topic topic = new Topic(topicName);
@@ -45,10 +60,8 @@ public class QosPublishHandler {
 
         // 2、生成存储信息
         StoreMessage storeMessage = toStoreMessage(msg,clientId);
-
         // 3、发送给订阅者
-
-
+        messagesPublisher.publishToSubscribers(storeMessage,topic);
 
         /**
          * <ul>
@@ -62,7 +75,12 @@ public class QosPublishHandler {
          *  <ul/>
          */
         // 4、是否保留
+        if (msg.fixedHeader().isRetain()){
+            messageRepository.cleanRetained(topic);
+        }
 
+        // 5、处理消息
+        m_interceptor.notifyTopicPublished(msg, clientId, username);
 
     }
 
