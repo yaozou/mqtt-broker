@@ -1,5 +1,7 @@
 package com.yao.broker;
 
+import com.yao.broker.core.server.IServer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -10,10 +12,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication
 public class MqttBrokerApplication {
+    @Autowired
+    private static IServer nettyServer;
     public static void main(String[] args) {
         try {
             SpringApplication.run(MqttBrokerApplication.class, args);
-
+            nettyServer.start();
             System.out.println("***************************************");
             System.out.println("***************************************");
             System.out.println("*******Platform  MQTT 启动成功*********");
