@@ -7,7 +7,7 @@
     <groupId>com.yao.broker</groupId>
     <artifactId>broker-starter</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
+    <packaging>jar</packaging>
 
     <parent>
         <groupId>com.yao.broker</groupId>
@@ -45,6 +45,11 @@
             <groupId>com.yao.broker.common</groupId>
             <artifactId>common-core</artifactId>
             <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.8</version>
         </dependency>
     </dependencies>
 
