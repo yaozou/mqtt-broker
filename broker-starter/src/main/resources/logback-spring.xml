@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml" />
-  <property name="LOG_FILE" value="logs/broker.log"/>
+
+  <conversionRule conversionWord="TRACE_ID" converterClass="com.yao.broker.common.logging.TraceIdConverter" />
+  <property name="LOG_FILE" value="logs/broker"/>
+  <property name="CONSOLE_LOG_PATTERN" value="%date{yyyy-MM-dd HH:mm:ss} %highlight(%-5level)[%yellow(%thread)]%green(%logger{56}.%method:%L) [%(%TRACE_ID)] %msg%n"/>
+
   <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
   <include resource="org/springframework/boot/logging/logback/file-appender.xml" />
   <root level="INFO">
