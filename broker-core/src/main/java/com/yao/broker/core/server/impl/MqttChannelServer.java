@@ -13,6 +13,7 @@ import com.yao.broker.core.repository.WillRepository;
 import com.yao.broker.core.server.IMqttChannelServer;
 import com.yao.broker.core.utils.MessageIdUtils;
 import com.yao.broker.core.utils.NettyUtils;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
@@ -250,7 +251,10 @@ public class MqttChannelServer implements IMqttChannelServer {
             packetId = msg.getMsgId();
         }
         MqttPublishVariableHeader variableHeader = new MqttPublishVariableHeader(msg.getTopic(),packetId);
-        MqttPublishMessage mqttPublishMessage = new MqttPublishMessage(header,variableHeader, Unpooled.wrappedBuffer(msg.getByteBuf()));
+
+        final ByteBuf origPayload = Unpooled.copiedBuffer(msg.getByteBuf());
+        ByteBuf payload = origPayload.retainedDuplicate();
+        MqttPublishMessage mqttPublishMessage = new MqttPublishMessage(header,variableHeader, payload);
 
         channel.writeAndFlush(mqttPublishMessage).addListener(FIRE_EXCEPTION_ON_FAILURE);
     }
