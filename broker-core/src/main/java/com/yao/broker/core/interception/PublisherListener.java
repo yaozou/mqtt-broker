@@ -16,7 +16,8 @@ public class PublisherListener implements InterceptHandler{
     public void onPublish(PublishInterceptMessage msg) {
        try {
            final String decodedPayload = ByteUtil.bytesToHexString(msg.getBytes());
-           log.info("Received on topic: " + msg.getTopicName() + " content: " + decodedPayload);
+           log.info("Received on topic: " + msg.getTopicName() + " HexString: " + decodedPayload);
+           log.info("Received on topic: " + msg.getTopicName() + " String:"+new String(msg.getBytes()));
        }catch (Exception e){
            e.printStackTrace();
        }
