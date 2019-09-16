@@ -73,8 +73,11 @@ public class NettyServer implements IServer {
             public void init(SocketChannel channel) throws Exception {
                 ChannelPipeline pipeline = channel.pipeline();
 
-                // ssl连接
-                pipeline.addLast("ssl",createSSLHandler(channel));
+                if (nettyConfig.isNeedBlokerSsl()){
+                    // ssl连接
+                    pipeline.addLast("ssl",createSSLHandler(channel));
+                }
+
 
                 // 设置心跳机制
                 pipeline.addFirst("idleStateHandler",new IdleStateHandler(nettyConfig.getChannelTimeoutSeconds(),0,0));

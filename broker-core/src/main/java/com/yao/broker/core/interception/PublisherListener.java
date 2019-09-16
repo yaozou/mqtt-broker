@@ -14,10 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 public class PublisherListener implements InterceptHandler{
     @Override
     public void onPublish(PublishInterceptMessage msg) {
-        byte[] bytes = new byte[msg.getPayload().readableBytes()];
-        msg.getPayload().getBytes(0, bytes);
-        final String decodedPayload = ByteUtil.bytesToHexString(bytes);
-        log.info("Received on topic: " + msg.getTopicName() + " content: " + decodedPayload);
+       try {
+           final String decodedPayload = ByteUtil.bytesToHexString(msg.getBytes());
+           log.info("Received on topic: " + msg.getTopicName() + " content: " + decodedPayload);
+       }catch (Exception e){
+           e.printStackTrace();
+       }
     }
 
     @Override

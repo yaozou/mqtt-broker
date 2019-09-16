@@ -2,6 +2,7 @@ package com.yao.broker.core.interception;
 
 import com.yao.broker.core.config.NettyConfig;
 import com.yao.broker.core.interception.message.PublishInterceptMessage;
+import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -56,16 +57,17 @@ public class BrokerInterceptor implements Interceptor{
         });
     }
     @Override
-    public void notifyTopicPublished(MqttPublishMessage msg, String clientID, String username) {
+    public void notifyTopicPublished(MqttPublishMessage msg,byte[] bytes, String clientID, String username) {
         executor.submit(()->{
             try {
                 int messageId = msg.variableHeader().packetId();
                 String topic = msg.variableHeader().topicName();
+                PublishInterceptMessage interceptMessage =  PublishInterceptMessage.builder().bytes(bytes).topicName(topic).clientID(clientID).username(username).build();
                 for (InterceptHandler handler : handlers.get(PublishInterceptMessage.class)) {
                     log.debug("Notifying MQTT PUBLISH message to interceptor. CId={}, messageId={}, topic={}", clientID, messageId, topic);
-                    handler.onPublish(PublishInterceptMessage.builder().msg(msg).clientID(clientID).username(username).build());
+                    handler.onPublish(interceptMessage);
                 }
-            } finally {
+            }finally {
                 ReferenceCountUtil.release(msg);
             }
         });

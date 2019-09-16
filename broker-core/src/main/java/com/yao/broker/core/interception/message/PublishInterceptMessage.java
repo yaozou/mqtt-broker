@@ -14,23 +14,9 @@ import lombok.Data;
 @Data
 @Builder
 public class PublishInterceptMessage {
-    private final MqttPublishMessage msg;
+    private  final String topicName;
+    private final byte[] bytes;
     private final String clientID;
     private final String username;
-    public String getTopicName() {
-        return msg.variableHeader().topicName();
-    }
-
-    public ByteBuf getPayload() {
-        return msg.payload();
-    }
-
-    public String getClientID() {
-        return clientID;
-    }
-
-    public String getUsername() {
-        return username;
-    }
 
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/broker-core/broker-core.iml" filepath="$PROJECT_DIR$/broker-core/broker-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/broker-starter/broker-starter.iml" filepath="$PROJECT_DIR$/broker-starter/broker-starter.iml" />
+      <module fileurl="file://$PROJECT_DIR$/common-core/common-core.iml" filepath="$PROJECT_DIR$/common-core/common-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/mqtt-broker-owner.iml" filepath="$PROJECT_DIR$/.idea/mqtt-broker-owner.iml" />
+    </modules>
+  </component>
+</project>

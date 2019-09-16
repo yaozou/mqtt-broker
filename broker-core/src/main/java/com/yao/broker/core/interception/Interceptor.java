@@ -1,5 +1,6 @@
 package com.yao.broker.core.interception;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 
 /**
@@ -16,5 +17,5 @@ public interface Interceptor {
      * @param clientID String
      * @param username String
      */
-    void notifyTopicPublished(MqttPublishMessage msg, String clientID, String username);
+    void notifyTopicPublished(MqttPublishMessage msg, byte[] bytes, String clientID, String username);
 }

@@ -26,6 +26,7 @@ public class NettyConfig {
     private boolean tcpNodelay;
     private boolean soKeepalive = true;
 
+    private boolean needBlokerSsl=false;
     private boolean needsClientAuth = true;
     private String keyManagerPassword;
     private String sslProvider;

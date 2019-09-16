@@ -37,6 +37,7 @@ public class MqttMsgServer implements IMqttMsgServer {
     @Override
     public void connect(Channel channel, MqttConnectMessage msg) {
         String clientId = msg.payload().clientIdentifier();
+        log.info("create connection,clientID is {}",clientId);
         // 1、判断是否为二次连接
         if (mqttChannelServer.isChannelActive(clientId)){
             mqttChannelServer.sendConnack(channel,false, MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION,clientId);
@@ -73,13 +74,14 @@ public class MqttMsgServer implements IMqttMsgServer {
 
         // 5、连接成功，响应
         mqttChannelServer.doConnectSuccess(channel,msg,clientId);
+        log.info("created connection successfully,clientID is {}",clientId);
     }
 
     @Override
     public void subscribe(Channel channel, MqttSubscribeMessage msg) {
        final String clientId = NettyUtils.clientID(channel);
        final int    msgId = msg.variableHeader().messageId();
-
+        log.info("ClientId({}) subscribe......",clientId);
         List<MqttTopicSubscription> subscriptions = msg.payload().topicSubscriptions();
         List<Integer> qosLevels = new ArrayList<>(subscriptions.size());
 
@@ -88,6 +90,7 @@ public class MqttMsgServer implements IMqttMsgServer {
             subscriptions.forEach(sub ->{
                 qosLevels.add(sub.qualityOfService().value());
                 topics.add(sub.topicName());
+                log.info("subscribe topic is {}",sub.topicName());
             });
 
             // 1、订阅成功
@@ -102,6 +105,7 @@ public class MqttMsgServer implements IMqttMsgServer {
 
         MqttSubAckMessage ackMessage = new MqttSubAckMessage(fixedHeader, MqttMessageIdVariableHeader.from(msgId),payload);
         channel.writeAndFlush(ackMessage).addListener(FIRE_EXCEPTION_ON_FAILURE);
+        log.info("ClientId({}) subscribed successfully......",clientId);
     }
 
     @Override
@@ -109,10 +113,11 @@ public class MqttMsgServer implements IMqttMsgServer {
         int msgId = msg.variableHeader().messageId();
         final String clientId = NettyUtils.clientID(channel);
         List<String> topics = msg.payload().topics();
-
+        log.info("ClientId({}) unsubscribe......",clientId);
         // 1、取消订阅成功
         if (!CollectionUtils.isEmpty(topics)){
             mqttChannelServer.doUnsubscribeSuccess(clientId,topics);
+            log.info("subscribe topics is {}",topics.toString());
         }
 
         // 2、取消订阅确认
@@ -121,6 +126,7 @@ public class MqttMsgServer implements IMqttMsgServer {
                 false,0);
         MqttUnsubAckMessage unsubAckMessage = new MqttUnsubAckMessage(fixedHeader, MqttMessageIdVariableHeader.from(msgId));
         channel.writeAndFlush(unsubAckMessage).addListener(FIRE_EXCEPTION_ON_FAILURE);
+        log.info("ClientId({}) unsubscribed successfully......",clientId);
     }
 
     @Override
@@ -131,15 +137,18 @@ public class MqttMsgServer implements IMqttMsgServer {
                 false,0);
         MqttMessage pingResp = new MqttMessage(header);
         channel.writeAndFlush(pingResp).addListener(CLOSE_ON_FAILURE);
+        log.info("ClientId({}) ping......",NettyUtils.clientID(channel));
     }
 
     @Override
     public void disconnect(Channel channel) {
         mqttChannelServer.closeChannel(channel,true);
+        log.info("ClientId({}) disconnect......",NettyUtils.clientID(channel));
     }
 
     @Override
     public void pulish(Channel channel, MqttPublishMessage msg) {
+        log.info("ClientId({}) pulish msg({})",NettyUtils.clientID(channel),msg.toString());
         // 固定报头
         MqttQoS qos = msg.fixedHeader().qosLevel();
         boolean isRetain = msg.fixedHeader().isRetain();
@@ -169,7 +178,7 @@ public class MqttMsgServer implements IMqttMsgServer {
         byte[] bytes = new byte[buf.readableBytes()];
         buf.getBytes(0, bytes);
 
-        brokerInterceptor.notifyTopicPublished(msg,NettyUtils.clientID(channel),NettyUtils.userName(channel));
+        brokerInterceptor.notifyTopicPublished(msg,bytes,NettyUtils.clientID(channel),NettyUtils.userName(channel));
 
         // 保留消息
         if (isRetain){
@@ -182,6 +191,7 @@ public class MqttMsgServer implements IMqttMsgServer {
     @Override
     public void puback(Channel channel, MqttPubAckMessage msg) {
         String clientId = NettyUtils.clientID(channel);
+        log.info("ClientId({}) puback msg({})",clientId,msg.toString());
         int msgId = msg.variableHeader().messageId();
         mqttChannelServer.doSendMessageConfirmStatus(clientId,msgId,ConfirmStatusEnum.COMPLETE);
     }
@@ -189,6 +199,7 @@ public class MqttMsgServer implements IMqttMsgServer {
     @Override
     public void pubrec(Channel channel, MqttMessage msg) {
         String clientId = NettyUtils.clientID(channel);
+        log.info("ClientId({}) pubrec msg({})",clientId,msg.toString());
         MqttMessageIdVariableHeader messageIdVariableHeader = (MqttMessageIdVariableHeader) msg.variableHeader();
         int msgId = messageIdVariableHeader.messageId();
         mqttChannelServer.sendPublishRel(channel,msgId);
@@ -198,6 +209,7 @@ public class MqttMsgServer implements IMqttMsgServer {
     @Override
     public void pubrel(Channel channel, MqttMessage msg) {
         String clientId = NettyUtils.clientID(channel);
+        log.info("ClientId({}) pubrel msg({})",clientId,msg.toString());
         MqttMessageIdVariableHeader messageIdVariableHeader = (MqttMessageIdVariableHeader) msg.variableHeader();
         int msgId = messageIdVariableHeader.messageId();
         mqttChannelServer.sendPublishComp(channel,msgId);
@@ -207,6 +219,7 @@ public class MqttMsgServer implements IMqttMsgServer {
     @Override
     public void pubcomp(Channel channel, MqttMessage msg) {
         String clientId = NettyUtils.clientID(channel);
+        log.info("ClientId({}) pubcomp msg({})",clientId,msg.toString());
         MqttMessageIdVariableHeader messageIdVariableHeader = (MqttMessageIdVariableHeader) msg.variableHeader();
         int msgId = messageIdVariableHeader.messageId();
         mqttChannelServer.doSendMessageConfirmStatus(clientId,msgId,ConfirmStatusEnum.COMPLETE);
@@ -216,6 +229,7 @@ public class MqttMsgServer implements IMqttMsgServer {
     public void close(Channel channel) {
         mqttChannelServer.closeChannel(channel,false);
         channel.close();
+        log.info("ClientId({}) close.........",NettyUtils.clientID(channel));
     }
 
     @Override
