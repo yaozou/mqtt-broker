@@ -18,4 +18,11 @@ public interface IServer {
      * @Author yao.zou
      */
     void stop();
+
+    /**
+     * 发送消息
+     * @param clientId
+     * @param msg
+     */
+    boolean send(String clientId, String msg);
 }

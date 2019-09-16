@@ -243,4 +243,10 @@ public class MqttMsgServer implements IMqttMsgServer {
             default:
         }
     }
+
+    @Override
+    public boolean sendMsg2Client(String clientId, String msg) {
+
+        return false;
+    }
 }

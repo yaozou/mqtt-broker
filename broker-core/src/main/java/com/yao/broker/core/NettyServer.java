@@ -5,6 +5,7 @@ import com.yao.broker.core.handler.NettyMqttHandler;
 import com.yao.broker.core.handler.SslOperatorHandler;
 import com.yao.broker.core.handler.TcpIdleTimeoutHandler;
 import com.yao.broker.core.pipeline.PipelineInitializer;
+import com.yao.broker.core.server.IMqttMsgServer;
 import com.yao.broker.core.server.IServer;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -38,6 +39,9 @@ public class NettyServer implements IServer {
     private SslOperatorHandler sslOperatorHandler;
     @Autowired
     private NettyMqttHandler nettyMqttHandler;
+    @Autowired
+    private IMqttMsgServer mqttMsgServer;
+
 
     private NioEventLoopGroup bossGroup;
     private NioEventLoopGroup workerGroup;
@@ -62,6 +66,13 @@ public class NettyServer implements IServer {
             }
         }
     }
+
+
+    @Override
+    public boolean send(String clientId, String msg) {
+        return mqttMsgServer.sendMsg2Client(clientId,msg);
+    }
+
 
     private void startSslTCPTransport(){
         String host = nettyConfig.getHost();

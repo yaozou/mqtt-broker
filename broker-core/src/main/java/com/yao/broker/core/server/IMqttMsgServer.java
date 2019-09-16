@@ -89,4 +89,11 @@ public interface IMqttMsgServer {
      * @param channel
      */
     void idleTimeout(Channel channel, IdleStateEvent evt);
+
+    /**
+     * 发送消息到终端
+     * @param clientId 终端唯一标识
+     * @param msg 消息
+     */
+    boolean sendMsg2Client(String clientId, String msg);
 }
