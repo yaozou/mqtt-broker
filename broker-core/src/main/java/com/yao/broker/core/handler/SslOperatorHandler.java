@@ -11,7 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -37,19 +39,39 @@ import java.util.Collections;
  **/
 @Service
 public class SslOperatorHandler {
+    private static final String PROTOCOL = "TLS";
     @Autowired
     private NettyConfig nettyConfig;
 
     public ChannelHandler createSsl(SocketChannel channel) throws Exception{
-        SslContext sslContext = createSslContext();
+        /*SslContext sslContext = createSslContext();
         SSLEngine engine = sslContext.newEngine(
                 channel.alloc(),
                 channel.remoteAddress().getHostString(),
-                channel.remoteAddress().getPort());
+                channel.remoteAddress().getPort());*/
+
+        SSLEngine engine = creatSslEngine();
+
+        engine.setUseClientMode(false);
         // 默认为双向认证
         boolean needsClientAuth = nettyConfig.isNeedsClientAuth();
         engine.setNeedClientAuth(needsClientAuth);
         return new SslHandler(engine);
+    }
+
+    private SSLEngine creatSslEngine() throws Exception {
+        KeyStore keyStore = getKeyStore();
+        final KeyManagerFactory kmf = KeyManagerFactory
+                .getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        kmf.init(keyStore,nettyConfig.getKeyManagerPassword().toCharArray());
+
+        final TrustManagerFactory tmf = TrustManagerFactory
+                .getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(keyStore);
+        SSLContext sslContext = SSLContext.getInstance(PROTOCOL);
+        sslContext.init(kmf.getKeyManagers(),tmf.getTrustManagers(),null);
+
+        return sslContext.createSSLEngine();
     }
 
     private SslContext createSslContext( )throws Exception{
@@ -106,6 +128,7 @@ public class SslOperatorHandler {
         final KeyManagerFactory kmf = KeyManagerFactory
                 .getInstance(KeyManagerFactory.getDefaultAlgorithm());
         kmf.init(ks, keyPassword.toCharArray());
+
         return SslContextBuilder.forServer(kmf);
     }
 

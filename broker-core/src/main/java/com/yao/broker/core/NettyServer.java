@@ -49,7 +49,9 @@ public class NettyServer implements IServer {
 
     @Override
     public void start() {
+        // 用于监听和接受客户端连接的Reactor线程
         bossGroup = new NioEventLoopGroup();
+        // 处理I/O读写的Reactor线程组
         workerGroup = new NioEventLoopGroup();
         channel = NioServerSocketChannel.class;
         startSslTCPTransport();
@@ -116,6 +118,7 @@ public class NettyServer implements IServer {
                         initializer.init(ch);
                     }
                 })
+                // 两个队列总和的最大值 默认为100
                 .option(ChannelOption.SO_BACKLOG,nettyConfig.getSoBacklog())
                 .option(ChannelOption.SO_REUSEADDR,nettyConfig.isSoReuseaddr())
                 .childOption(ChannelOption.TCP_NODELAY,nettyConfig.isTcpNodelay())

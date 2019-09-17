@@ -1,0 +1,16 @@
+单向认证 passw0rdsrv
+1、生成服务端私钥和证书仓库
+keytool -genkey -alias securechat -keysize 2048 -validity 365 -keyalg RSA -dname "CN=localhost" -keypass passw0rdsrv -keystore signedserverkeystore.jks
+2、生成服务端自签名证书
+keytool -export -alias securechat -keystore signedserverkeystore.jks -storepass passw0rdsrv -file signedserverkeystore.cer
+3、生成客户端的密钥对和证书仓库，用于将服务端的证书保存在客户端的授信证书仓库中
+keytool -genkey -alias smcc -keysize 2048 -validity 365 -keyalg RSA -dname "CN=localhost" -keypass passw0rdsrv -storepass passw0rdsrv -keystore signedclientkeystore.jks
+4、将服务端的证书导入到客户端的证书仓库中
+keytool -import -trustcacerts -alias securechat -file signedserverkeystore.cer -storepass passw0rdsrv -keystore signedclientkeystore.jks
+
+
+双向认证
+1、生成客户端的自签证书
+keytool -export -alias smcc -keystore signedclientkeystore.jks -storepass passw0rdsrv -file signedclientkeystore.cer
+2、将客户端的自签名证书导入到服务端的信任证书仓库中
+keytool -import -trustcacerts -alias smcc -file signedclientkeystore.cer -storepass passw0rdsrv -keystore signedserverkeystore.jks
