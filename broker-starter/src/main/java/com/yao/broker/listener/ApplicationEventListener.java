@@ -1,5 +1,7 @@
 package com.yao.broker.listener;
 
+import com.yao.broker.core.NettyServer;
+import com.yao.broker.core.server.IServer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEvent;
@@ -16,14 +18,15 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class ApplicationEventListener implements ApplicationListener {
-
+    @Autowired
+    private NettyServer nettyServer;
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
         if (event instanceof ContextClosedEvent || event instanceof ContextClosedEvent){
             try {
-
+                nettyServer.stop();
             } catch (Exception e) {
-               log.error("Close rabbitmq error:{}",e.getMessage());
+               log.error("Close error:{}",e.getMessage());
             }
         }
     }
