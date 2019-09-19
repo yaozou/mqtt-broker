@@ -311,6 +311,7 @@ public class MqttChannelServer implements IMqttChannelServer {
                             info.getMessage().put(sendMqttMessage.getMsgId(),sendMqttMessage);
                             sendMqttMessageRepository.add(info.getClientId(),sendMqttMessage);
                         }
+                        sendPublish(info.getChannel(),sendMqttMessage);
                     }
                 });
             });
