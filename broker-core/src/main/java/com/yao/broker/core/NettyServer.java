@@ -116,8 +116,16 @@ public class NettyServer implements IServer {
                 })
                 // 两个队列总和的最大值 默认为100
                 .option(ChannelOption.SO_BACKLOG,nettyConfig.getSoBacklog())
+                // 是否允许重复使用本地地址和端口
                 .option(ChannelOption.SO_REUSEADDR,nettyConfig.isSoReuseaddr())
                 // 设置是否启用Nagle算法：用将小的碎片数据连接成更大的报文来提高发送效率。如果需要发送一些较小的报文，则需要禁用该算法
+                /**
+                 * Nagle算法是将小的数据包组装为更大的帧然后进行发送，而不是输入一次发送一次,因此在数据包不足的时候会等待其他数据的到了，组装成大的数据包进行发送，虽然该方式有效提高网络的有效
+                 *
+                 * 负载，但是却造成了延时，而该参数的作用就是禁止使用Nagle算法，使用于小数据即时传输，于TCP_NODELAY相对应的是TCP_CORK，该选项是需要等到发送的数据量最大的时候，一次性发送
+                 *
+                 * 数据，适用于文件传输。
+                 */
                 .childOption(ChannelOption.TCP_NODELAY,nettyConfig.isTcpNodelay())
                 // 设置TCP层keepalive
                 .childOption(ChannelOption.SO_KEEPALIVE,nettyConfig.isSoKeepalive())
