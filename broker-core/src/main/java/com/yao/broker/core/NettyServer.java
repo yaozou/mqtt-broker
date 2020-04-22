@@ -121,7 +121,7 @@ public class NettyServer implements IServer {
                 .childOption(ChannelOption.TCP_NODELAY,nettyConfig.isTcpNodelay())
                 // 设置TCP层keepalive
                 .childOption(ChannelOption.SO_KEEPALIVE,nettyConfig.isSoKeepalive())
-                // 重用缓冲区
+                // 重用缓冲区 ByteBuf分配器  大多池化，堆外
                 .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         ChannelFuture future = bootstrap.bind(host,port);
         try {
