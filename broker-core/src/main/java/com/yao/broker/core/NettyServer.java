@@ -81,29 +81,25 @@ public class NettyServer implements IServer {
         int    port = nettyConfig.getPort();
 
         final TcpIdleTimeoutHandler timeoutHandler = new TcpIdleTimeoutHandler();
-        startFactory(host, port, new PipelineInitializer() {
-            @Override
-            public void init(SocketChannel channel) throws Exception {
-                ChannelPipeline pipeline = channel.pipeline();
+        startFactory(host, port, channel -> {
+            ChannelPipeline pipeline = channel.pipeline();
 
-                if (nettyConfig.isNeedBlokerSsl()){
-                    // ssl连接
-                    pipeline.addLast("ssl",createSSLHandler(channel));
-                }
-
-
-                // 设置心跳机制
-                pipeline.addFirst("idleStateHandler",new IdleStateHandler(nettyConfig.getChannelTimeoutSeconds(),0,0));
-                pipeline.addAfter("idleStateHandler","idleEventHandler",timeoutHandler);
-
-                // 加解密 (netty自带的MQTT协议解析类)
-                pipeline.addLast("decoder", new MqttDecoder());
-                pipeline.addLast("encoder", MqttEncoder.INSTANCE);
-
-                // 应用消息处理
-                pipeline.addLast("handler",nettyMqttHandler);
+            if (nettyConfig.isNeedBlokerSsl()){
+                // ssl连接
+                pipeline.addLast("ssl",createSSLHandler(channel));
             }
 
+
+            // 设置心跳机制
+            pipeline.addFirst("idleStateHandler",new IdleStateHandler(nettyConfig.getChannelTimeoutSeconds(),0,0));
+            pipeline.addAfter("idleStateHandler","idleEventHandler",timeoutHandler);
+
+            // 加解密 (netty自带的MQTT协议解析类)
+            pipeline.addLast("decoder", new MqttDecoder());
+            pipeline.addLast("encoder", MqttEncoder.INSTANCE);
+
+            // 应用消息处理
+            pipeline.addLast("handler",nettyMqttHandler);
         });
     }
 
@@ -121,8 +117,11 @@ public class NettyServer implements IServer {
                 // 两个队列总和的最大值 默认为100
                 .option(ChannelOption.SO_BACKLOG,nettyConfig.getSoBacklog())
                 .option(ChannelOption.SO_REUSEADDR,nettyConfig.isSoReuseaddr())
+                // 设置是否启用Nagle算法：用将小的碎片数据连接成更大的报文来提高发送效率。如果需要发送一些较小的报文，则需要禁用该算法
                 .childOption(ChannelOption.TCP_NODELAY,nettyConfig.isTcpNodelay())
+                // 设置TCP层keepalive
                 .childOption(ChannelOption.SO_KEEPALIVE,nettyConfig.isSoKeepalive())
+                // 重用缓冲区
                 .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         ChannelFuture future = bootstrap.bind(host,port);
         try {
